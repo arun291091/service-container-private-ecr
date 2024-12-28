@@ -1,11 +1,11 @@
 name: Redis Service container test
 on:
-  workflow_dispatch:
-    inputs:
-      run:
-        description: say yes or no
-        required: false
-        type: string
+    workflow_dispatch:
+      inputs:
+        manual-run:
+          description: Wanna run it manually ?
+          default: true          
+          type: boolean
         
 permissions:
     contents: 'write'
@@ -16,7 +16,7 @@ permissions:
 jobs:
   # Label of the container job
   login-to-amazon-ecr:
-    runs-on: self-hosted-runner
+    runs-on: ubuntu-latest
     env:
       ROLE: arn:aws:iam::123456789123:role/aws-githubaction-ecr-role
     steps:
@@ -48,7 +48,7 @@ jobs:
 
   runner-job:
     # You must use a Linux environment when using service containers or container jobs
-    runs-on: self-hosted-runner
+    runs-on: ubuntu-latest
     needs: login-to-amazon-ecr
 
     # Service containers to run with `runner-job`
