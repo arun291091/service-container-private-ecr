@@ -1,0 +1,66 @@
+name: Redis Service container test
+on:
+  workflow_dispatch:
+    inputs:
+      run:
+        description: say yes or no
+        required: false
+        type: string
+        
+permissions:
+    contents: 'write'
+    id-token: 'write'
+    pull-requests: write
+    issues: write
+    
+jobs:
+  # Label of the container job
+  login-to-amazon-ecr:
+    runs-on: self-hosted-runner
+    env:
+      ROLE: arn:aws:iam::123456789123:role/aws-githubaction-ecr-role
+    steps:
+  
+    ### AWS Auth #########
+      - id: auth-aws
+        name: ⬆ Configure AWS credentials ⬆
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+           aws-region: eu-central-1
+           role-to-assume: ${{ env.ROLE }}
+                  #control duration of the role/token validity - 30 minutes - we can shorten it per need
+           role-duration-seconds: 1800
+           role-session-name: GitHubActions
+           audience: sts.amazonaws.com
+           
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: 'false'
+
+      # More information on these outputs can be found  in the 'Docker Credentials' section : https://github.com/aws-actions/amazon-ecr-login?tab=readme-ov-file#run-an-image-as-a-service
+
+    outputs:
+      registry: ${{ steps.login-ecr.outputs.registry }}
+      docker_username: ${{ steps.login-ecr.outputs.docker_username_123456789123_dkr_ecr_us_east_1_amazonaws_com }}
+      docker_password: ${{ steps.login-ecr.outputs.docker_password_123456789123_dkr_ecr_us_east_1_amazonaws_com }}
+
+  runner-job:
+    # You must use a Linux environment when using service containers or container jobs
+    runs-on: self-hosted-runner
+    needs: login-to-amazon-ecr
+
+    # Service containers to run with `runner-job`
+    services:
+      redis:
+        # Docker Hub image
+        image: 123456789123.dkr.ecr.us-east-1.amazonaws.com/images:redis
+        ports:
+          - 6379:6379
+        credentials:
+          username: ${{ needs.login-to-amazon-ecr.outputs.docker_username }}
+          password: ${{ needs.login-to-amazon-ecr.outputs.docker_password }}
+    steps:
+      - name: Run steps in container
+        run: echo "successfully logged in to ECR and Running the service container"
